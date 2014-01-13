@@ -1,8 +1,13 @@
 var express = require('express'),
-	app = express();
+	app = express(),
+	cons = require('consolidate');
+
+app.engine('html',cons.swig);
+app.set('view engine', 'html');
+app.set('views', __dirname + "/views")
 
 app.get('/', function (req, res) {
-	res.send("Hello World!");
+	res.render('hello', { 'name': 'Andrés'});
 });
 
 app.get('*', function (req, res) {
