@@ -1,0 +1,13 @@
+{
+    "python_loc": "python",
+    "servers": {
+        "mongod1": {
+            "address": "localhost",
+            "port": "27017"
+        },
+        "web1": {
+            "address": "localhost",
+            "port": "3000"
+        }
+    }
+}

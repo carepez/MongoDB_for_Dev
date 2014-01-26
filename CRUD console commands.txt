@@ -1,0 +1,231 @@
+#Seleccionar documentos cuyo campo "name" este entre F y H, mostrar solo el campo "name"
+
+	>db.customers.find({name : { $gte : "F", $lte : "H" }}, { name : true , _id : false })
+	
+	"Ga" > "G" true
+
+# exists
+	>>db.customers.find({ email : { $exists : true } } )
+	>>db.customers.find({ email : { $exists : false } } )
+
+
+#by type
+
+	>>db.customers.find({ email : { $type : 2 } } )
+	2 indica tipo "String"
+
+#RegExp
+
+	>>db.customers.find({ email : { $regex : "@" } } )
+
+	>>db.customers.find({ email : { $regex : "e$" } } )
+
+	>>db.customers.find({ email : { $regex : "^a" } } )
+
+	>>db.users.find({ name : { $regex : "q"}, email : { $exists : true } })
+
+#OR / UNION
+
+	>>db.people.find({ $or : [ { name : { $regex : "e$" } } , { age : { $exists : true} } ]] } )
+
+
+	>>db.scores.find({ $or : [ {score : { $lt : 50 }}, {score : { $gt : 90 }} ] })
+
+
+#AND
+
+	
+	>>db.people.find({ $and : [ { name : { $gt : "C" } }, { name : { $regex : "a" }}  ]  })
+
+	equivalente a
+	
+	>>db.people.find({ name : { $ gt : "C" , $regex : "a" }})
+
+	la seconda è più performante della prima
+
+	>>db.scores.find({ score : { $gt : 50}, score : { $lt : 60} } )
+	esta query encuentra documentos con score menor de 60 porque score es redefinido la segunda vez reemplaza la primera
+
+#Querying inside Arrays IN E ALL
+
+	>>db.accounts.find({ favorites : { $all : ["pretzels", "beer" ] } })
+	Restituisce i documenti che hanno nell'array favorites sia il valore "pretzels" sia il valore "beer"
+
+	>>db.accounts.find({ favorites : { $all : ["pretzels", "beer" ] } })
+	Restutisce i documenti che hanno nell'array favorites o il valore "pretzels" o il valore "beer"
+
+	>>db.users.find( { friends : { $all : [ "Joe" , "Bob" ] }, favorites : { $in : [ "running" , "pickles" ] } } )
+
+#DOT Notation
+
+	>>db.catalog.find({ "price" : { $gt : 10000 }, "reviews.rating" : { $gte : 5 } })
+	Permette di fare una query in base a subdocuments annidati
+
+#CURSORS
+
+	>>cur = db.people.find();
+
+	>>cur.hasNext();
+
+	>>cur.next()
+
+	>>while (cur.hasNext()) printjson (cur.next());
+
+	>>cur.limit(5);
+
+	>>cur.sort( { name : -1 } ); //(-1 means reverse order)
+
+	>>ur.sort( { name : -1 } ).limit(5); 
+	
+	>>cur.skip(2); //salta i primi 2 documenti
+
+	>>db.scores.find({type : "exam"}).sort({score : -1 }).skip(50).limit(20)
+
+#COUNTING
+
+	>>db.scores.find().count()
+
+	>>db.scores.count({type:"exam" , score : { $gt : 90 }})
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%			UPDATING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+
+- update(<query the document to update>,<the new document updates>)
+- if the query results more than one document it updates only the first one
+- the update discard any information that exists before in the document 
+  and replace with the second argument in the update function. (except the _id value)
+
+#UPDATE
+
+	>>db.customers.update({ NAME : "Smith"}, { name : "Thomsom", salary : 50000});
+
+
+#SET VALUES
+
+	>>db.customer.update({ name : "Alice"} , { $set : { age : 30 }});
+
+#INCREMENT number VALUES
+
+	>>db.customer.update({ name : "Alice"} , { $inc : { age : 30 }});
+
+#REMOVE FIELDS
+
+	>>db.customer.update({ name : "Alice"} , { $unset : { profession : 1 }});
+
+#push/pop/pull/pushall/pullall/addtoset
+
+	{ _id : 0 , a : [ 1, 2, 3, 4]}
+
+	>>db.arrays.update({ _id: 0 } , { $set : { "a.2" : 5 }});
+
+	>>db.arrays.update({ _id: 0 } , { $push : { a : 6 }});
+
+	>>db.arrays.update({ _id: 0 } , { $pop : { a : 1 }});  //rimuove l'ultimo elemento (LIFO)
+
+	>>db.arrays.update({ _id: 0 } , { $pop : { a : -1 }}); //rimuove il primo elemento (FIFO)
+
+	>>db.arrays.update({ _id: 0 } , { $pushall : { a : [7, 8, 9] }});
+
+	>>db.arrays.update({ _id: 0 } , { $pull : { a : 5 }});
+
+	>>db.arrays.update({ _id: 0 } , { $pullAll : { a : [ 2, 4, 8 ] }});
+
+	>>db.arrays.update({ _id: 0 } , { $pull : { a : 5 }});
+
+	>>db.arrays.update({ _id: 0 } , { $addToSet : { a : 5 }}); //in not exists 5 add it else dont do anything
+
+#UPSERTS
+
+	>>db.customer.update({ name : "Alice"} , { $set : { age : 30 }}, { upsert : true}); 
+	//create if document doesn't exist
+	
+	{ _id : ObjectId(...), name : "Alice", age : 30}
+
+#MULTIUPDATE
+
+	>>db.customer.update({} , { $set : { age : 30 }}, {multi : true} );
+	
+	ATTENTION: multiupdate is not an isolated transaction. For example In case of concurrency between write and read operations
+	the multiupdate execute 3 writes then pause to permit read operations, and then resume and make other 4 writes and then pause again
+	and so on untile it finish to update all the documents.
+
+	The update operation (single or multi) is an atomic transaction on sigle document.
+
+	<< 
+
+	<< In an atomic transaction, a series of database operations either all occur, or nothing occurs.>>
+
+	<< The isolation property ensures that the concurrent execution of transactions results in a system state that
+	would be obtained if transactions were executed serially, i.e. one after the other. Providing isolation is the
+	main goal of concurrency control. Depending on concurrency control method, the effects of an incomplete transaction
+	might not even be visible to another transaction.>>
+
+
+	>>db.scores.update({ score : {$lt : 70}}, { $inc : { score : 20 }}, {multi : true})
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%			REMOVING
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+#REMOVE
+
+	>>db.people.remove()
+	//delete every document on the collection
+	//not atomic isolated trnasactions
+
+	>>db.people.remove({name : {$gt : "M"}})
+
+	>>db.people.drop()
+	//Delete the collection and de metadata related to the collection, i.e. indexes
+
+	
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%			GETLASTERROR
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+	>>db.runCommand({ getLastError : 1 })
+
+	"n" 		--> number of affected documents
+	"ConnectionID"	--> the connection that coused the last error
+	"ok"		--> 1?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
